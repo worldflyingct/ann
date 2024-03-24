@@ -56,9 +56,9 @@ void init_neurons()
             neurons[i][j].value = 0;
             for (int k = 0 ; k < LAYER_NEURON_NUM ; k++)
             {
-                neurons[i][j].weight[k] = 0;
+                neurons[i][j].weight[k] = 1;
             }
-            out_weight[j] = 0;
+            out_weight[j] = 1;
         }
     }
 }
@@ -117,7 +117,7 @@ int training ()
             {
                 while (1)
                 {
-                    double change = 1;
+                    double change = -0.01;
                     neurons[0][j].bias = neurons[0][j].bias + change;
                     double r2 = check_data();
                     if (r < r2)
@@ -147,7 +147,7 @@ int training ()
             {
                 while (1)
                 {
-                    double change = 1;
+                    double change = -0.01;
                     neurons[0][j].weight[k] = neurons[0][j].weight[k] + change;
                     double r2 = check_data();
                     if (r < r2)
@@ -179,7 +179,7 @@ int training ()
             int k = rand() % LAYER_NEURON_NUM;
             while (1)
             {
-                double change = 1;
+                double change = -0.01;
                 out_weight[k] = out_weight[k] + change;
                 double r2 = check_data();
                 if (r < r2)
@@ -212,7 +212,7 @@ int training ()
             {
                 while (1)
                 {
-                    double change = 1;
+                    double change = -0.01;
                     neurons[i][j].bias = neurons[i][j].bias + change;
                     double r2 = check_data();
                     if (r < r2)
@@ -242,7 +242,7 @@ int training ()
             {
                 while (1)
                 {
-                    double change = 1;
+                    double change = -0.01;
                     neurons[i][j].weight[k] = neurons[i][j].weight[k] + change;
                     double r2 = check_data();
                     if (r < r2)
