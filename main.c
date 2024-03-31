@@ -1,275 +1,173 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <time.h>
+#include <math.h>
+#include "config.h"
+#include "dataset.h"
+#include "nn.h"
 
-#define LAYER_NEURON_NUM 6
-#define HIDDEN_LAYER_NUM 8
+extern NODE network[HIDDEN_LAYER_NUM][LAYER_NEURON_NUM];
+extern NODE outputlayer;
+extern POINT points[NUMSAMPLES];
 
-struct NEURON
-{
-    double value;
-    double bias;
-    double weight[HIDDEN_LAYER_NUM];
-};
-struct NEURON neurons[HIDDEN_LAYER_NUM][LAYER_NEURON_NUM];
-int out_weight[LAYER_NEURON_NUM]; // 最后一级的权重
-
-double calc(double x, double y)
+double forwardProp(POINT point)
 {
     for (int i = 0; i < LAYER_NEURON_NUM; i++)
-    {
-        double sum = 0;
-        sum += x * neurons[0][i].weight[0];
-        sum += y * neurons[0][i].weight[1];
-        sum += neurons[0][i].bias;
-        neurons[0][i].value = sum > 0 ? sum : 0;
+    { // 隐藏层第一层
+        network[0][i].totalInput = network[0][i].bias;
+        network[0][i].totalInput += network[0][i].link[0].weight * point.x;
+        network[0][i].totalInput += network[0][i].link[1].weight * point.y;
+        network[0][i].out = activation(network[0][i].totalInput);
     }
     for (int i = 1; i < HIDDEN_LAYER_NUM; i++)
-    {
-        for (int j = 0; j < LAYER_NEURON_NUM; j++)
+    { // 隐藏层非第一层
+        for (int j = 1; j < LAYER_NEURON_NUM; j++)
         {
-            double sum = 0;
+            network[i][j].totalInput = network[i][j].bias;
             for (int k = 0; k < LAYER_NEURON_NUM; k++)
             {
-                sum += neurons[i - 1][k].value * neurons[i][j].weight[k];
+                network[i][j].totalInput += network[i][j].link[k].weight * network[i - 1][k].out;
             }
-            sum += neurons[i][j].bias;
-            neurons[i][i].value = sum > 0 ? sum : 0;
+            network[i][j].out = activation(network[i][j].totalInput);
         }
     }
-    double out = 0;
-    for (int i = 0; i < LAYER_NEURON_NUM; i++)
+    // 输出层
+    outputlayer.totalInput = outputlayer.bias;
+    for (int i = 1; i < LAYER_NEURON_NUM; i++)
     {
-        out += neurons[HIDDEN_LAYER_NUM - 1][i].value * out_weight[i];
+        outputlayer.totalInput += outputlayer.link[i].weight * network[HIDDEN_LAYER_NUM - 1][i].out;
     }
+    outputlayer.out = tanh(outputlayer.totalInput);
+    double out = square(outputlayer.out, point.label);
+    // printf("out:%f,%d,%f\n", outputlayer.out, point.label, out);
     return out;
 }
 
-void init_neurons()
+void backProp(POINT point)
+{
+    // 清空所有节点的outputDer
+    for (int i = 0; i < HIDDEN_LAYER_NUM; i++)
+    {
+        for (int j = 0; j < LAYER_NEURON_NUM; j++)
+        {
+            network[i][j].outputDer = 0;
+        }
+    }
+    // 输出层
+    outputlayer.outputDer = squareder(outputlayer.out, point.label); // 目标和结果的差距
+    outputlayer.inputDer = outputlayer.outputDer * activationder(outputlayer.totalInput);
+    outputlayer.accInputDer += outputlayer.inputDer;
+    outputlayer.numAccumulatedDers++;
+    for (int i = 0; i < LAYER_NEURON_NUM; i++)
+    {
+        outputlayer.link[i].errorDer = outputlayer.inputDer * network[HIDDEN_LAYER_NUM - 1][i].out;
+        outputlayer.link[i].accErrorDer += outputlayer.link[i].errorDer;
+        outputlayer.link[i].numAccumulatedDers++;
+        network[HIDDEN_LAYER_NUM - 1][i].outputDer += outputlayer.link[i].weight * outputlayer.inputDer;
+    }
+    for (int i = HIDDEN_LAYER_NUM - 1; i >= 1; i--)
+    { // 隐藏层非第一层
+        for (int j = 0; j < LAYER_NEURON_NUM; j++)
+        {
+            network[i][j].inputDer = network[i][j].outputDer * activationder(network[i][j].totalInput);
+            network[i][j].accInputDer += network[i][j].inputDer;
+            network[i][j].numAccumulatedDers++;
+            for (int k = 0; k < LAYER_NEURON_NUM; k++)
+            {
+                network[i][j].link[k].errorDer = network[i][j].inputDer * network[i - 1][k].out;
+                network[i][j].link[k].accErrorDer += network[i][j].link[k].errorDer;
+                network[i][j].link[k].numAccumulatedDers++;
+                network[i - 1][k].outputDer += network[i][j].link[k].weight * network[i][j].inputDer;
+            }
+        }
+    }
+    // 隐藏层第一层
+    for (int i = 0; i < LAYER_NEURON_NUM; i++)
+    {
+        network[0][i].inputDer = network[0][i].outputDer * activationder(network[0][i].totalInput);
+        network[0][i].accInputDer += network[0][i].inputDer;
+        network[0][i].numAccumulatedDers++;
+        network[0][i].link[0].errorDer = network[0][i].inputDer * point.x;
+        network[0][i].link[0].accErrorDer += network[0][i].link[0].errorDer;
+        network[0][i].link[0].numAccumulatedDers++;
+        network[0][i].link[1].errorDer = network[0][i].inputDer * point.y;
+        network[0][i].link[1].accErrorDer += network[0][i].link[0].errorDer;
+        network[0][i].link[1].numAccumulatedDers++;
+    }
+}
+
+void updateWeights()
 {
     for (int i = 0; i < HIDDEN_LAYER_NUM; i++)
     {
         for (int j = 0; j < LAYER_NEURON_NUM; j++)
         {
-            neurons[i][j].bias = 0.1;
-            neurons[i][j].value = 0;
+            if (network[i][j].numAccumulatedDers > 0)
+            {
+                network[i][j].bias -= LEARNINGRATE * network[i][j].accInputDer / network[i][j].numAccumulatedDers;
+                network[i][j].accInputDer = 0;
+                network[i][j].numAccumulatedDers = 0;
+            }
             for (int k = 0; k < LAYER_NEURON_NUM; k++)
             {
-                neurons[i][j].weight[k] = 2.0 * rand() / RAND_MAX - 1;
+                if (network[i][j].link[k].numAccumulatedDers > 0)
+                {
+                    network[i][j].link[k].weight = network[i][j].link[k].weight - (LEARNINGRATE / network[i][j].link[k].numAccumulatedDers) * network[i][j].link[k].accErrorDer;
+                    network[i][j].link[k].accErrorDer = 0;
+                    network[i][j].link[k].numAccumulatedDers = 0;
+                }
             }
-            out_weight[j] = 2.0 * rand() / RAND_MAX - 1;
         }
     }
 }
 
-double trains_data[13][13];
-void init_trains_data()
+double getLoss(int mode) // 0代表训练集，1代表测试集
 {
-    memset(trains_data, 0, sizeof(trains_data));
-    trains_data[11][6] = 1;
-    trains_data[10][3] = -1;
-}
-
-double check_data()
-{
-    int right = 0;
-    int total = 0;
-    for (int x = 0; x < 13; x++)
+    double loss = 0;
+    if (mode)
     {
-        for (int y = 0; y < 13; y++)
+        for (int i = NUMSAMPLES / 2; i < NUMSAMPLES; i++)
         {
-            if (trains_data[x][y] != 0)
-            {
-                total++;
-                double r = calc(x - 6, y - 6);
-
-                if ((r > 0 && trains_data[x][y] > 0) || (r < 0 && trains_data[x][y] < 0))
-                {
-                    right++;
-                }
-            }
+            loss += forwardProp(points[i]);
         }
     }
-    return 100.0 * right / total;
+    else
+    {
+        for (int i = 0; i < NUMSAMPLES / 2; i++)
+        {
+            loss += forwardProp(points[i]);
+        }
+    }
+    return loss / (NUMSAMPLES / 2);
 }
 
-int training()
+void training()
 {
-    double r = check_data();
-    while (r < 100.0)
+    for (int i = 0; i < NUMSAMPLES / 2; i++)
     {
-        int i = rand() % HIDDEN_LAYER_NUM;
-        int j = rand() % LAYER_NEURON_NUM;
-        if (i == 0)
-        {                       // 第一层
-            int k = rand() % 3; // 0代表参数x的weight,1代表参数y的weight,2代表参数bias
-            if (k == 2)
-            {
-                while (1)
-                {
-                    double change = rand() % 2 ? 0.01 : -0.01;
-                    neurons[0][j].bias = neurons[0][j].bias + change;
-                    double r2 = check_data();
-                    if (r < r2)
-                    { // 误差变大了，改变测试方向。
-                        change = 0 - change;
-                        if (r2 - r < 0.01)
-                        {
-                            r = r2;
-                            printf("i:%d,j:%d,k:%d,r:%f,at %d\n", i, j, k, r, __LINE__);
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        if (r - r2 < 0.01)
-                        {
-                            r = r2;
-                            printf("i:%d,j:%d,k:%d,r:%f,at %d\n", i, j, k, r, __LINE__);
-                            break;
-                        }
-                    }
-                    r = r2;
-                    printf("i:%d,j:%d,k:%d,r:%f,at %d\n", i, j, k, r, __LINE__);
-                }
-            }
-            else
-            {
-                while (1)
-                {
-                    double change = rand() % 2 ? 0.01 : -0.01;
-                    neurons[0][j].weight[k] = neurons[0][j].weight[k] + change;
-                    double r2 = check_data();
-                    if (r < r2)
-                    { // 误差变大了，改变测试方向。
-                        change = 0 - change;
-                        if (r2 - r < 0.01)
-                        {
-                            r = r2;
-                            printf("i:%d,j:%d,k:%d,r:%f,at %d\n", i, j, k, r, __LINE__);
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        if (r - r2 < 0.01)
-                        {
-                            r = r2;
-                            printf("i:%d,j:%d,k:%d,r:%f,at %d\n", i, j, k, r, __LINE__);
-                            break;
-                        }
-                    }
-                    r = r2;
-                    printf("i:%d,j:%d,k:%d,r:%f,at %d\n", i, j, k, r, __LINE__);
-                }
-            }
-        }
-        else if (i == HIDDEN_LAYER_NUM - 1)
-        { // 最后一层
-            int k = rand() % LAYER_NEURON_NUM;
-            while (1)
-            {
-                double change = rand() % 2 ? 0.01 : -0.01;
-                out_weight[k] = out_weight[k] + change;
-                double r2 = check_data();
-                if (r < r2)
-                { // 误差变大了，改变测试方向。
-                    change = 0 - change;
-                    if (r2 - r < 0.01)
-                    {
-                        r = r2;
-                        printf("i:%d,j:%d,k:%d,r:%f,at %d\n", i, j, k, r, __LINE__);
-                        break;
-                    }
-                }
-                else
-                {
-                    if (r - r2 < 0.01)
-                    {
-                        r = r2;
-                        printf("i:%d,j:%d,k:%d,r:%f,at %d\n", i, j, k, r, __LINE__);
-                        break;
-                    }
-                }
-                r = r2;
-                printf("i:%d,j:%d,k:%d,r:%f,at %d\n", i, j, k, r, __LINE__);
-            }
-        }
-        else
-        { // 中间层
-            int k = rand() % (LAYER_NEURON_NUM + 1);
-            if (k == LAYER_NEURON_NUM)
-            {
-                while (1)
-                {
-                    double change = rand() % 2 ? 0.01 : -0.01;
-                    neurons[i][j].bias = neurons[i][j].bias + change;
-                    double r2 = check_data();
-                    if (r < r2)
-                    { // 误差变大了，改变测试方向。
-                        change = 0 - change;
-                        if (r2 - r < 0.01)
-                        {
-                            r = r2;
-                            printf("i:%d,j:%d,k:%d,r:%f,at %d\n", i, j, k, r, __LINE__);
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        if (r - r2 < 0.01)
-                        {
-                            r = r2;
-                            printf("i:%d,j:%d,k:%d,r:%f,at %d\n", i, j, k, r, __LINE__);
-                            break;
-                        }
-                    }
-                    r = r2;
-                    printf("i:%d,j:%d,k:%d,r:%f,at %d\n", i, j, k, r, __LINE__);
-                }
-            }
-            else
-            {
-                while (1)
-                {
-                    double change = rand() % 2 ? 0.01 : -0.01;
-                    neurons[i][j].weight[k] = neurons[i][j].weight[k] + change;
-                    double r2 = check_data();
-                    if (r < r2)
-                    { // 误差变大了，改变测试方向。
-                        change = 0 - change;
-                        if (r2 - r < 0.0001)
-                        {
-                            r = r2;
-                            printf("i:%d,j:%d,k:%d,r:%f,at %d\n", i, j, k, r, __LINE__);
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        if (r - r2 < 0.0001)
-                        {
-                            r = r2;
-                            printf("i:%d,j:%d,k:%d,r:%f,at %d\n", i, j, k, r, __LINE__);
-                            break;
-                        }
-                    }
-                    r = r2;
-                    printf("i:%d,j:%d,k:%d,r:%f,at %d\n", i, j, k, r, __LINE__);
-                }
-            }
+        forwardProp(points[i]);
+        backProp(points[i]);
+        if ((i + 1) % 10 == 0)
+        {
+            updateWeights();
         }
     }
-    printf("r:%f,at %d\n", r, __LINE__);
-    return 0;
+    double lossTrain = getLoss(0);
+    double lossTest = getLoss(1);
+    printf("lossTrain:%f,lossTest:%f\n", lossTrain, lossTest);
 }
 
 int main(int argc, char **argv)
 {
     srand(time(0));
-    init_neurons();
-    init_trains_data();
-    training();
+    classifyCircleData();
+    buildNetwork();
+    double lossTrain = getLoss(0);
+    double lossTest = getLoss(1);
+    printf("lossTrain:%f,lossTest:%f\n", lossTrain, lossTest);
+    while (1)
+    {
+        training();
+    }
     return 0;
 }
