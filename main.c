@@ -147,7 +147,7 @@ void training()
     {
         forwardProp(points[i]);
         backProp(points[i]);
-        if ((i + 1) % 10 == 0)
+        if ((i + 1) % BATCHSIZE == 0)
         {
             updateWeights();
         }

@@ -8,7 +8,7 @@ typedef struct nn
     double weight;
     double errorDer;
     double accErrorDer;
-    double numAccumulatedDers;
+    int numAccumulatedDers;
 } LINK;
 
 typedef struct
@@ -19,7 +19,7 @@ typedef struct
     double inputDer;
     double outputDer;
     double accInputDer;
-    double numAccumulatedDers;
+    int numAccumulatedDers;
     double totalInput;
 } NODE;
 
