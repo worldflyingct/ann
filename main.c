@@ -98,8 +98,29 @@ void backProp(POINT point)
 
 void updateWeights()
 {
-    for (int i = 0; i < HIDDEN_LAYER_NUM; i++)
-    {
+    for (int i = 0; i < LAYER_NEURON_NUM; i++)
+    { // 隐藏层第一层
+        if (network[0][i].numAccumulatedDers > 0)
+        {
+            network[0][i].bias -= LEARNINGRATE * network[0][i].accInputDer / network[0][i].numAccumulatedDers;
+            network[0][i].accInputDer = 0;
+            network[0][i].numAccumulatedDers = 0;
+        }
+        if (network[0][i].link[0].numAccumulatedDers > 0)
+        {
+            network[0][i].link[0].weight -= LEARNINGRATE * network[0][i].link[0].accErrorDer / network[0][i].link[0].numAccumulatedDers;
+            network[0][i].link[0].accErrorDer = 0;
+            network[0][i].link[0].numAccumulatedDers = 0;
+        }
+        if (network[0][i].link[1].numAccumulatedDers > 0)
+        {
+            network[0][i].link[1].weight -= LEARNINGRATE * network[0][i].link[1].accErrorDer / network[0][i].link[1].numAccumulatedDers;
+            network[0][i].link[1].accErrorDer = 0;
+            network[0][i].link[1].numAccumulatedDers = 0;
+        }
+    }
+    for (int i = 1; i < HIDDEN_LAYER_NUM; i++)
+    { // 隐藏层非第一层
         for (int j = 0; j < LAYER_NEURON_NUM; j++)
         {
             if (network[i][j].numAccumulatedDers > 0)
@@ -112,10 +133,26 @@ void updateWeights()
             {
                 if (network[i][j].link[k].numAccumulatedDers > 0)
                 {
-                    network[i][j].link[k].weight = network[i][j].link[k].weight - (LEARNINGRATE / network[i][j].link[k].numAccumulatedDers) * network[i][j].link[k].accErrorDer;
+                    network[i][j].link[k].weight -= LEARNINGRATE * network[i][j].link[k].accErrorDer / network[i][j].link[k].numAccumulatedDers;
                     network[i][j].link[k].accErrorDer = 0;
                     network[i][j].link[k].numAccumulatedDers = 0;
                 }
+            }
+        }
+    }
+    // 输出层
+    if (outputlayer.numAccumulatedDers > 0)
+    {
+        outputlayer.bias -= LEARNINGRATE * outputlayer.accInputDer / outputlayer.numAccumulatedDers;
+        outputlayer.accInputDer = 0;
+        outputlayer.numAccumulatedDers = 0;
+        for (int i = 0; i < LAYER_NEURON_NUM; i++)
+        {
+            if (outputlayer.link[i].numAccumulatedDers > 0)
+            {
+                outputlayer.link[i].weight -= LEARNINGRATE * outputlayer.link[i].accErrorDer / outputlayer.link[i].numAccumulatedDers;
+                outputlayer.link[i].accErrorDer = 0;
+                outputlayer.link[i].numAccumulatedDers = 0;
             }
         }
     }
@@ -165,7 +202,7 @@ int main(int argc, char **argv)
     double lossTrain = getLoss(0);
     double lossTest = getLoss(1);
     printf("lossTrain:%f,lossTest:%f\n", lossTrain, lossTest);
-    while (1)
+    for (int i = 0; i < 100; i++)
     {
         training();
     }
