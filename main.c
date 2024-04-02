@@ -16,7 +16,7 @@ void forwardProp(POINT point)
         network[0][i].totalInput = network[0][i].bias;
         network[0][i].totalInput += network[0][i].link[0].weight * point.x;
         network[0][i].totalInput += network[0][i].link[1].weight * point.y;
-        network[0][i].out = activation(network[0][i].totalInput);
+        network[0][i].output = activation(network[0][i].totalInput);
     }
     for (int i = 1; i < HIDDEN_LAYER_NUM; i++)
     { // 隐藏层非第一层
@@ -25,18 +25,18 @@ void forwardProp(POINT point)
             network[i][j].totalInput = network[i][j].bias;
             for (int k = 0; k < LAYER_NEURON_NUM; k++)
             {
-                network[i][j].totalInput += network[i][j].link[k].weight * network[i - 1][k].out;
+                network[i][j].totalInput += network[i][j].link[k].weight * network[i - 1][k].output;
             }
-            network[i][j].out = activation(network[i][j].totalInput);
+            network[i][j].output = activation(network[i][j].totalInput);
         }
     }
     // 输出层
     outputlayer.totalInput = outputlayer.bias;
     for (int i = 0; i < LAYER_NEURON_NUM; i++)
     {
-        outputlayer.totalInput += outputlayer.link[i].weight * network[HIDDEN_LAYER_NUM - 1][i].out;
+        outputlayer.totalInput += outputlayer.link[i].weight * network[HIDDEN_LAYER_NUM - 1][i].output;
     }
-    outputlayer.out = outlayeractivation(outputlayer.totalInput);
+    outputlayer.output = outlayeractivation(outputlayer.totalInput);
 }
 
 void backProp(POINT point)
@@ -50,13 +50,13 @@ void backProp(POINT point)
         }
     }
     // 输出层
-    outputlayer.outputDer = squareder(outputlayer.out, point.label); // 目标和结果的差距
+    outputlayer.outputDer = squareder(outputlayer.output, point.label); // 目标和结果的差距
     outputlayer.inputDer = outputlayer.outputDer * outlayeractivationder(outputlayer.totalInput);
     outputlayer.accInputDer += outputlayer.inputDer;
     outputlayer.numAccumulatedDers++;
     for (int i = 0; i < LAYER_NEURON_NUM; i++)
     {
-        outputlayer.link[i].errorDer = outputlayer.inputDer * network[HIDDEN_LAYER_NUM - 1][i].out;
+        outputlayer.link[i].errorDer = outputlayer.inputDer * network[HIDDEN_LAYER_NUM - 1][i].output;
         outputlayer.link[i].accErrorDer += outputlayer.link[i].errorDer;
         outputlayer.link[i].numAccumulatedDers++;
         network[HIDDEN_LAYER_NUM - 1][i].outputDer += outputlayer.link[i].weight * outputlayer.inputDer;
@@ -70,7 +70,7 @@ void backProp(POINT point)
             network[i][j].numAccumulatedDers++;
             for (int k = 0; k < LAYER_NEURON_NUM; k++)
             {
-                network[i][j].link[k].errorDer = network[i][j].inputDer * network[i - 1][k].out;
+                network[i][j].link[k].errorDer = network[i][j].inputDer * network[i - 1][k].output;
                 network[i][j].link[k].accErrorDer += network[i][j].link[k].errorDer;
                 network[i][j].link[k].numAccumulatedDers++;
                 network[i - 1][k].outputDer += network[i][j].link[k].weight * network[i][j].inputDer;
@@ -161,16 +161,16 @@ double getLoss(int mode) // 0代表训练集，1代表测试集
     {
         for (int i = NUMSAMPLES / 2; i < NUMSAMPLES; i++)
         {
-			forwardProp(points[i]);
-            loss += square(outputlayer.out, points[i].label);
+            forwardProp(points[i]);
+            loss += square(outputlayer.output, points[i].label);
         }
     }
     else
     {
         for (int i = 0; i < NUMSAMPLES / 2; i++)
         {
-			forwardProp(points[i]);
-            loss += square(outputlayer.out, points[i].label);
+            forwardProp(points[i]);
+            loss += square(outputlayer.output, points[i].label);
         }
     }
     return loss / (NUMSAMPLES / 2);

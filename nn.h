@@ -15,7 +15,7 @@ typedef struct
 {
     double bias;
     LINK link[LAYER_NEURON_NUM];
-    double out;
+    double output;
     double inputDer;
     double outputDer;
     double accInputDer;

@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <string.h>
 #include <math.h>
 #include "config.h"
 #include "dataset.h"
@@ -11,10 +10,9 @@ void shuffle()
     for (int i = 0; i < NUMSAMPLES; i++)
     {
         int index = i * rand() / RAND_MAX;
-        POINT point;
-        memcpy(&point, points + i, sizeof(POINT));
-        memcpy(points + i, points + index, sizeof(POINT));
-        memcpy(points + index, &point, sizeof(POINT));
+        POINT point = points[i];
+        points[i] = points[index];
+        points[index] = point;
     }
 }
 
