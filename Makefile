@@ -1,4 +1,4 @@
-CC=gcc
+CC=x86_64-linux-musl-gcc
 
 ann:main.o dataset.o nn.o
 	$(CC) -static -o $@ $^
@@ -13,4 +13,4 @@ nn.o:nn.c nn.h config.h
 	$(CC) -c -o $@ nn.c
 
 clean:
-	del *.o
+	rm *.o

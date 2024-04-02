@@ -5,7 +5,7 @@ typedef struct
 {
     double x;
     double y;
-    int label;
+    double label;
 } POINT;
 
 void classifyCircleData();

@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <math.h>
 #include "config.h"
 #include "nn.h"
 
@@ -7,7 +8,8 @@ NODE outputlayer;
 
 double square(double output, double target)
 {
-    return (output - target) * (output - target) / 2;
+    double r = output - target;
+    return r * r / 2;
 }
 
 double squareder(double output, double target)
@@ -43,9 +45,40 @@ double activationder(double x)
 #endif
 }
 
+double outlayeractivation(double x)
+{ // tanh的倒数
+#if OUTLAYERACTIVATIONFUNCTION == TANH
+    return tanh(x);
+#endif
+}
+
+double outlayeractivationder(double x)
+{ // tanh的倒数
+#if OUTLAYERACTIVATIONFUNCTION == TANH
+    double y = tanh(x);
+    return 1 - y * y;
+#endif
+}
+
 void buildNetwork()
 {
-    for (int i = 0; i < HIDDEN_LAYER_NUM; i++)
+    for (int i = 0; i < LAYER_NEURON_NUM; i++)
+    {
+        network[0][i].bias = 0.1;
+        network[0][i].link[0].weight = 1.0 * rand() / RAND_MAX - 0.5;
+        network[0][i].link[0].errorDer = 0;
+        network[0][i].link[0].accErrorDer = 0;
+        network[0][i].link[0].numAccumulatedDers = 0;
+        network[0][i].link[1].weight = 1.0 * rand() / RAND_MAX - 0.5;
+        network[0][i].link[1].errorDer = 0;
+        network[0][i].link[1].accErrorDer = 0;
+        network[0][i].link[1].numAccumulatedDers = 0;
+        network[0][i].inputDer = 0;
+        network[0][i].outputDer = 0;
+        network[0][i].accInputDer = 0;
+        network[0][i].numAccumulatedDers = 0;
+    }
+    for (int i = 1; i < HIDDEN_LAYER_NUM; i++)
     {
         for (int j = 0; j < LAYER_NEURON_NUM; j++)
         {

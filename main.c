@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <math.h>
 #include "config.h"
 #include "dataset.h"
 #include "nn.h"
@@ -10,7 +9,7 @@ extern NODE network[HIDDEN_LAYER_NUM][LAYER_NEURON_NUM];
 extern NODE outputlayer;
 extern POINT points[NUMSAMPLES];
 
-double forwardProp(POINT point)
+void forwardProp(POINT point)
 {
     for (int i = 0; i < LAYER_NEURON_NUM; i++)
     { // 隐藏层第一层
@@ -21,7 +20,7 @@ double forwardProp(POINT point)
     }
     for (int i = 1; i < HIDDEN_LAYER_NUM; i++)
     { // 隐藏层非第一层
-        for (int j = 1; j < LAYER_NEURON_NUM; j++)
+        for (int j = 0; j < LAYER_NEURON_NUM; j++)
         {
             network[i][j].totalInput = network[i][j].bias;
             for (int k = 0; k < LAYER_NEURON_NUM; k++)
@@ -33,14 +32,11 @@ double forwardProp(POINT point)
     }
     // 输出层
     outputlayer.totalInput = outputlayer.bias;
-    for (int i = 1; i < LAYER_NEURON_NUM; i++)
+    for (int i = 0; i < LAYER_NEURON_NUM; i++)
     {
         outputlayer.totalInput += outputlayer.link[i].weight * network[HIDDEN_LAYER_NUM - 1][i].out;
     }
-    outputlayer.out = tanh(outputlayer.totalInput);
-    double out = square(outputlayer.out, point.label);
-    // printf("out:%f,%d,%f\n", outputlayer.out, point.label, out);
-    return out;
+    outputlayer.out = outlayeractivation(outputlayer.totalInput);
 }
 
 void backProp(POINT point)
@@ -55,7 +51,7 @@ void backProp(POINT point)
     }
     // 输出层
     outputlayer.outputDer = squareder(outputlayer.out, point.label); // 目标和结果的差距
-    outputlayer.inputDer = outputlayer.outputDer * activationder(outputlayer.totalInput);
+    outputlayer.inputDer = outputlayer.outputDer * outlayeractivationder(outputlayer.totalInput);
     outputlayer.accInputDer += outputlayer.inputDer;
     outputlayer.numAccumulatedDers++;
     for (int i = 0; i < LAYER_NEURON_NUM; i++)
@@ -91,7 +87,7 @@ void backProp(POINT point)
         network[0][i].link[0].accErrorDer += network[0][i].link[0].errorDer;
         network[0][i].link[0].numAccumulatedDers++;
         network[0][i].link[1].errorDer = network[0][i].inputDer * point.y;
-        network[0][i].link[1].accErrorDer += network[0][i].link[0].errorDer;
+        network[0][i].link[1].accErrorDer += network[0][i].link[1].errorDer;
         network[0][i].link[1].numAccumulatedDers++;
     }
 }
@@ -146,14 +142,14 @@ void updateWeights()
         outputlayer.bias -= LEARNINGRATE * outputlayer.accInputDer / outputlayer.numAccumulatedDers;
         outputlayer.accInputDer = 0;
         outputlayer.numAccumulatedDers = 0;
-        for (int i = 0; i < LAYER_NEURON_NUM; i++)
+    }
+    for (int i = 0; i < LAYER_NEURON_NUM; i++)
+    {
+        if (outputlayer.link[i].numAccumulatedDers > 0)
         {
-            if (outputlayer.link[i].numAccumulatedDers > 0)
-            {
-                outputlayer.link[i].weight -= LEARNINGRATE * outputlayer.link[i].accErrorDer / outputlayer.link[i].numAccumulatedDers;
-                outputlayer.link[i].accErrorDer = 0;
-                outputlayer.link[i].numAccumulatedDers = 0;
-            }
+            outputlayer.link[i].weight -= LEARNINGRATE * outputlayer.link[i].accErrorDer / outputlayer.link[i].numAccumulatedDers;
+            outputlayer.link[i].accErrorDer = 0;
+            outputlayer.link[i].numAccumulatedDers = 0;
         }
     }
 }
@@ -165,14 +161,16 @@ double getLoss(int mode) // 0代表训练集，1代表测试集
     {
         for (int i = NUMSAMPLES / 2; i < NUMSAMPLES; i++)
         {
-            loss += forwardProp(points[i]);
+			forwardProp(points[i]);
+            loss += square(outputlayer.out, points[i].label);
         }
     }
     else
     {
         for (int i = 0; i < NUMSAMPLES / 2; i++)
         {
-            loss += forwardProp(points[i]);
+			forwardProp(points[i]);
+            loss += square(outputlayer.out, points[i].label);
         }
     }
     return loss / (NUMSAMPLES / 2);
@@ -196,7 +194,7 @@ void training()
 
 int main(int argc, char **argv)
 {
-    srand(time(0));
+    srand((unsigned)time(NULL));
     classifyCircleData();
     buildNetwork();
     double lossTrain = getLoss(0);

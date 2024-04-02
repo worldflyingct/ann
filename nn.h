@@ -3,7 +3,7 @@
 
 #include "config.h"
 
-typedef struct nn
+typedef struct
 {
     double weight;
     double errorDer;
@@ -25,8 +25,11 @@ typedef struct
 
 double square(double output, double target);
 double squareder(double output, double target);
+double tanhder(double x); // tanh的倒数
 double activation(double x);
 double activationder(double x);
+double outlayeractivation(double x);
+double outlayeractivationder(double x);
 void buildNetwork();
 
 #endif
