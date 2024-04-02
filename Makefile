@@ -1,7 +1,7 @@
 CC=gcc
 
 ann:main.o dataset.o nn.o
-	$(CC) -static -o $@ $^
+	$(CC) -static -o $@ $^ -lm
 
 main.o:main.c dataset.h nn.h config.h
 	$(CC) -c -o $@ main.c
@@ -13,4 +13,4 @@ nn.o:nn.c nn.h config.h
 	$(CC) -c -o $@ nn.c
 
 clean:
-	del *.o
+	rm *.o

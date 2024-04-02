@@ -46,15 +46,16 @@ double activationder(double x)
 }
 
 double outlayeractivation(double x)
-{ // tanh的倒数
+{
 #if OUTLAYERACTIVATIONFUNCTION == TANH
     return tanh(x);
 #endif
 }
 
 double outlayeractivationder(double x)
-{ // tanh的倒数
+{
 #if OUTLAYERACTIVATIONFUNCTION == TANH
+    // tanh的倒数
     double y = tanh(x);
     return 1 - y * y;
 #endif
