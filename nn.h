@@ -31,5 +31,8 @@ double activationder(double x);
 double outlayeractivation(double x);
 double outlayeractivationder(double x);
 void buildNetwork();
+void forwardProp(POINT point);
+void backProp(POINT point);
+void updateWeights();
 
 #endif
