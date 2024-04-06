@@ -9,7 +9,7 @@ void shuffle()
 {
     for (int i = 0; i < NUMSAMPLES; i++)
     {
-        int index = i * (1.0 * rand() / RAND_MAX);
+        int index = i * ((double)rand() / RAND_MAX);
         POINT point = points[i];
         points[i] = points[index];
         points[index] = point;

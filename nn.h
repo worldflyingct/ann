@@ -3,18 +3,19 @@
 
 #include "config.h"
 
-typedef struct
+typedef struct LINK
 {
     double weight;
     double errorDer;
     double accErrorDer;
     int numAccumulatedDers;
 } LINK;
+typedef LINK *PLINK;
 
-typedef struct
+typedef struct NODE
 {
     double bias;
-    LINK link[LAYER_NEURON_NUM];
+    PLINK link;
     double output;
     double inputDer;
     double outputDer;
@@ -22,7 +23,10 @@ typedef struct
     int numAccumulatedDers;
     double totalInput;
 } NODE;
+typedef NODE *PNODE;
+typedef PNODE *PPNODE;
 
+double getOutPut();
 double square(double output, double target);
 double squareder(double output, double target);
 double tanhder(double x); // tanh的倒数

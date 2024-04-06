@@ -5,7 +5,6 @@
 #include "dataset.h"
 #include "nn.h"
 
-extern NODE outputlayer;
 extern POINT points[NUMSAMPLES];
 
 double getLoss(int mode) // 0代表训练集，1代表测试集
@@ -16,7 +15,7 @@ double getLoss(int mode) // 0代表训练集，1代表测试集
         for (int i = NUMSAMPLES / 2; i < NUMSAMPLES; i++)
         {
             forwardProp(points[i]);
-            loss += square(outputlayer.output, points[i].label);
+            loss += square(getOutPut(), points[i].label);
         }
     }
     else
@@ -24,7 +23,7 @@ double getLoss(int mode) // 0代表训练集，1代表测试集
         for (int i = 0; i < NUMSAMPLES / 2; i++)
         {
             forwardProp(points[i]);
-            loss += square(outputlayer.output, points[i].label);
+            loss += square(getOutPut(), points[i].label);
         }
     }
     return loss / (NUMSAMPLES / 2);
